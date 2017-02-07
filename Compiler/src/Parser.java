@@ -48,7 +48,7 @@ public abstract class Parser {
 
     public void advance() {
         try {
-            String nextLine = "";
+            String nextLine;
             do {
                 nextLine = reader.readLine().split("//")[0].trim();
             } while (nextLine.equals(""));
@@ -60,7 +60,7 @@ public abstract class Parser {
 
     public abstract int getCommandType();
 
-    public void printCurrent() {
-        System.out.println(currLine);
+    public String getCurrent() {
+        return currLine;
     }
 }

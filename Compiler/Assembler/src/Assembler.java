@@ -7,7 +7,7 @@ import java.util.List;
 /**
  * Created by enielsen on 01.02.17.
  */
-public class Assembler {
+public abstract class Assembler {
 
     public static void main(String[] args) {
         List<String> assembledFiles = new ArrayList<>();

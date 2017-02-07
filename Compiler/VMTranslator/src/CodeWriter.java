@@ -8,20 +8,19 @@ import java.util.Stack;
  */
 public class CodeWriter {
 
-    private static final String TRUE = Util.zeroPad(Integer.toBinaryString(-1), Util.ADDRESS_LEN);
-    private static final String FALSE = "000000000000000";
+    private static final String TEMP_BASE = "5";
 
     private String fileName;
     private PrintWriter writer;
     private int nextLabel = 0;
 
-    public CodeWriter(String programName, String fileName) throws IOException {
-        this.fileName = fileName;
+    public CodeWriter(String programName) throws IOException {
         writer = new PrintWriter(programName+".asm");
     }
 
     public void setFileName(String fileName) {
         this.fileName = fileName;
+        printComment("************ " + fileName.toUpperCase() + " ************");
     }
 
     public void writeArithmetic(String cmd) {
@@ -80,7 +79,6 @@ public class CodeWriter {
 
     private void writeCmds(String... cmds) {
         for (String cmd : cmds) {
-            System.out.println(cmd);
             writer.println(cmd);
         }
     }
@@ -95,30 +93,30 @@ public class CodeWriter {
                 if (segment.equals("constant")) {
                     writeCmds("@" + index, "D=A", "@SP", "A=M", "M=D");
                 } else if (segment.equals("argument")) {
-                    writePush(pushLoadTemplate("ARG", index));
+                    writePush("ARG", index);
                 } else if (segment.equals("local")) {
-                    writePush(pushLoadTemplate("LCL", index));
+                    writePush("LCL", index);
                 } else if (segment.equals("this")) {
-                    writePush(pushLoadTemplate("THIS", index));
+                    writePush("THIS", index);
                 } else if (segment.equals("that")) {
-                    writePush(pushLoadTemplate("THAT", index));
+                    writePush("THAT", index);
                 } else if (segment.equals("temp")) {
-                    writePush(pushLoadTemplate("R5", index));
+                    pushTempOrStatic(TEMP_BASE, index);
                 } else if (segment.equals("static")) {
-                    // Static direct addressing, use general locations starting at 16
-                    writePush(pushLoadStaticTemplate(index));
-                } else if (segment.equals("pointer") && index == 0) {
-                    writePush(pushLoadTemplate("THIS", 0));
-                } else if (segment.equals("pointer") && index == 1) {
-                    writePush(pushLoadTemplate("THAT", 0));
+                    pushTempOrStatic(fileName + "." + index, index);
+                } else if (segment.equals("pointer")) {
+                    String seg = (index == 0) ? "THIS" : "THAT";
+                    pushPointer(seg);
                 }
                 incSP();
                 break;
             case VMParser.C_POP:
+                decSP();
 
                 String reg = "";
                 if (segment.equals("constant")) {
-                    // TODO
+                    // this shouldn't happen?
+                    throw new IllegalArgumentException("POP CONSTANT??");
                 } else if (segment.equals("local")) {
                     reg = "LCL";
                 } else if (segment.equals("argument")) {
@@ -128,41 +126,56 @@ public class CodeWriter {
                 } else if (segment.equals("that")) {
                     reg  = "THAT";
                 } else if (segment.equals("temp")) {
-                    reg = "R5";
+                    popTempOrStatic(TEMP_BASE, index);
+                    return;
                 } else if (segment.equals("static")) {
-                    // Static direct addressing, use general locations starting at 16
-
-                } else if (segment.equals("pointer") && index == 0) {
-
-                } else if (segment.equals("pointer") && index == 1) {
-
+                    popTempOrStatic(fileName + "." + index, index);
+                    return;
+                } else if (segment.equals("pointer")) {
+                    String seg = (index == 0) ? "THIS" : "THAT";
+                    popPointer(seg);
+                    return;
                 }
-                writeCmds("@"+reg, "D=A", "@"+index, "A=A+D");
-                decSP();
+                writeCmds("@"+index, "D=A", "@"+reg, "D=M+D", "@R13", "M=D");
                 setAtoSP();
-                writeCmds("D=M");
+                writeCmds("D=M", "@13", "A=M", "M=D");
                 break;
         }
     }
 
-    private String pushLoadTemplate(String segment, int index) {
-        String offsetString = (index == 0) ? "" :  "@" + index + "\n" +  // put index in A
-                                                    "A=D+A" + "\n" +      // calc absolute address
-                                                    "D=M";          // put value in D
-        return  "@" + segment + "\n" +      // load data from memory
-                "D=M" + "\n" +              // store value in D
-                offsetString;
-
+    private void pushTempOrStatic(String base, int offset) {
+        writeCmds("@" + offset, "D=A", "@"+base, "A=A+D", "D=M");
+        setAtoSP();
+        writeCmds("M=D");
     }
 
-    private void writePush(String pushString) {
-        writeCmds(pushString, "@SP", "A=M", "M=D");
+    private void popTempOrStatic(String base, int offset) {
+        writeCmds("@" + offset, "D=A", "@"+base, "D=A+D", "@R13", "M=D");
+        setAtoSP();
+        writeCmds("D=M", "@13", "A=M", "M=D");
     }
 
-    private String pushLoadStaticTemplate(int index) {
-        return  "@"+fileName+"."+index + "\n" +
-                "D=M" + "\n";
+    private void pushPointer(String seg) {
+        writeCmds("@"+seg, "D=M");
+        setAtoSP();
+        writeCmds("M=D");
     }
+
+    private void popPointer(String seg) {
+        setAtoSP();
+        writeCmds("@"+seg, "M=D");
+    }
+    public void printComment(String comment) {
+        writer.println("// " + comment);
+    }
+
+    private void writePush(String segment, int index) {
+        writeCmds("@" + index, "D=A", "@" + segment, "A=M+D", "D=M");
+        setAtoSP();
+        writeCmds("M=D");
+    }
+
+
 
     public void close() {
         writer.close();
@@ -176,31 +189,4 @@ public class CodeWriter {
         writeCmds("@SP", "M=M-1");
     }
 
-    public static void main(String[] args) throws Exception {
- /*       CodeWriter cw = new CodeWriter("Testfile.asm");
-        cw.writePushPop(VMParser.C_PUSH, "constant", 7);
-        cw.writePushPop(VMParser.C_PUSH, "constant", 8);
-        cw.writeArithmetic("lt");
-        cw.writePushPop(VMParser.C_PUSH, "constant", 9);
-        cw.writePushPop(VMParser.C_PUSH, "constant", 10);
-        cw.writeArithmetic("gt");
-
-        cw.close();*/
-        CodeWriter cw = new CodeWriter("../projects/07/StackArithmetic/StackTest/", "StackTest");
-        VMParser parser = new VMParser("../projects/07/StackArithmetic/StackTest/StackTest.vm");
-        while (parser.hasMoreCommands()) {
-            parser.advance();
-            parser.printCurrent();
-            int cmdType = parser.getCommandType();
-            switch (cmdType) {
-                case VMParser.C_ARITHMETIC:
-                    cw.writeArithmetic(parser.getArg1());
-                    break;
-                case VMParser.C_PUSH:
-                    cw.writePushPop(cmdType, parser.getArg1(), Integer.parseInt(parser.getArg2()));
-                    break;
-            }
-        }
-        cw.close();
-    }
 }
