@@ -8,7 +8,6 @@ import java.util.Stack;
  */
 public class CodeWriter {
 
-    private static final int TEMP_BASE = 5;
     public static final boolean DEBUG = true;
 
     private String fileName;
@@ -113,7 +112,8 @@ public class CodeWriter {
                     //pushTempOrStatic(Integer.toString(TEMP_BASE), index);
                     pushTempOrStatic("R5", index);
                 } else if (segment.equals("static")) {
-                    pushTempOrStatic(fileName + "." + index, index);
+         //           pushTempOrStatic(fileName + "." + index, 0);
+                    pushStatic(index);
                 } else if (segment.equals("pointer")) {
                     String seg = (index == 0) ? "THIS" : "THAT";
                     pushPointer(seg);
@@ -140,7 +140,8 @@ public class CodeWriter {
                     popTempOrStatic("R5", index);
                     return;
                 } else if (segment.equals("static")) {
-                    popTempOrStatic(fileName + "." + index, index);
+          //          popTempOrStatic(fileName + "." + index, 0);
+                    popStatic(index);
                     return;
                 } else if (segment.equals("pointer")) {
                     String seg = (index == 0) ? "THIS" : "THAT";
@@ -158,6 +159,18 @@ public class CodeWriter {
         writeCmds("D=M", "@R13", "A=M", "M=D");
     }
 
+    private void pushStatic(int num) {
+        writeCmds("@"+fileName+"."+num, "D=M");
+        setAtoSP();
+        writeCmds("M=D");
+    }
+
+    private void popStatic(int num) {
+        setAtoSP();
+        writeCmds("D=M");
+        writeCmds("@"+fileName+"."+num, "M=D");
+    }
+
     private void pushTempOrStatic(String base, int offset) {
         writeCmds("@" + offset, "D=A", "@"+base, "A=A+D", "D=M");
         setAtoSP();
@@ -165,9 +178,9 @@ public class CodeWriter {
     }
 
     private void popTempOrStatic(String base, int offset) {
-        writeCmds("@" + offset, "D=A", "@"+base, "D=A+D", "@R13", "M=D");
+        writeCmds("@" + offset, "D=A", "@"+base, "D=A+D", "@R14", "M=D");
         setAtoSP();
-        writeCmds("D=M", "@R13", "A=M", "M=D");
+        writeCmds("D=M", "@R14", "A=M", "M=D");
     }
 
     private void pushPointer(String seg) {
@@ -201,10 +214,6 @@ public class CodeWriter {
 
     public void writeInit() {
         writeCmds("@256", "D=A", "@SP", "M=D");
-        putVal("LCL", -1);
-        putVal("ARG", -2);
-        putVal("THIS", -3);
-        putVal("THAT", -4);
         writeCall("Sys.init", 0);
     }
 

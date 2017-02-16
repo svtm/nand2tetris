@@ -153,12 +153,12 @@ M=M-1
 D=A
 @R5
 D=A+D
-@R13
+@R14
 M=D
 @SP
 A=M
 D=M
-@R13
+@R14
 A=M
 M=D
 // push constant 23
@@ -235,12 +235,12 @@ M=M-1
 D=A
 @R5
 D=A+D
-@R13
+@R14
 M=D
 @SP
 A=M
 D=M
-@R13
+@R14
 A=M
 M=D
 // call Class1.get 0
@@ -367,17 +367,10 @@ M=M+1
 // pop static 0
 @SP
 M=M-1
-@0
-D=A
-@Class1.0
-D=A+D
-@R13
-M=D
 @SP
 A=M
 D=M
-@R13
-A=M
+@Class1.0
 M=D
 // push argument 1
 @1
@@ -393,17 +386,10 @@ M=M+1
 // pop static 1
 @SP
 M=M-1
-@1
-D=A
-@Class1.1
-D=A+D
-@R13
-M=D
 @SP
 A=M
 D=M
-@R13
-A=M
+@Class1.1
 M=D
 // push constant 0
 @0
@@ -476,10 +462,7 @@ A=M
 // function Class1.get 0
 (Class1.get)
 // push static 0
-@0
-D=A
 @Class1.0
-A=A+D
 D=M
 @SP
 A=M
@@ -487,10 +470,7 @@ M=D
 @SP
 M=M+1
 // push static 1
-@1
-D=A
 @Class1.1
-A=A+D
 D=M
 @SP
 A=M
@@ -587,17 +567,10 @@ M=M+1
 // pop static 0
 @SP
 M=M-1
-@0
-D=A
-@Class2.0
-D=A+D
-@R13
-M=D
 @SP
 A=M
 D=M
-@R13
-A=M
+@Class2.0
 M=D
 // push argument 1
 @1
@@ -613,17 +586,10 @@ M=M+1
 // pop static 1
 @SP
 M=M-1
-@1
-D=A
-@Class2.1
-D=A+D
-@R13
-M=D
 @SP
 A=M
 D=M
-@R13
-A=M
+@Class2.1
 M=D
 // push constant 0
 @0
@@ -696,10 +662,7 @@ A=M
 // function Class2.get 0
 (Class2.get)
 // push static 0
-@0
-D=A
 @Class2.0
-A=A+D
 D=M
 @SP
 A=M
@@ -707,10 +670,7 @@ M=D
 @SP
 M=M+1
 // push static 1
-@1
-D=A
 @Class2.1
-A=A+D
 D=M
 @SP
 A=M

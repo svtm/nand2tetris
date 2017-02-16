@@ -169,12 +169,12 @@ M=M-1
 D=A
 @R5
 D=A+D
-@R13
+@R14
 M=D
 @SP
 A=M
 D=M
-@R13
+@R14
 A=M
 M=D
 // label LOOP
@@ -386,12 +386,12 @@ M=M-1
 D=A
 @R5
 D=A+D
-@R13
+@R14
 M=D
 @SP
 A=M
 D=M
-@R13
+@R14
 A=M
 M=D
 // push local 0
