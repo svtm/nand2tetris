@@ -50,9 +50,10 @@ public abstract class Parser {
         try {
             String nextLine;
             do {
-                nextLine = reader.readLine().split("//")[0].trim();
+                String[] cleaned = reader.readLine().trim().split("//");
+                nextLine = (cleaned.length > 0) ? cleaned[0] : "";
             } while (nextLine.equals(""));
-            currLine = nextLine;
+            currLine = nextLine.trim();
         } catch (IOException e) {
             e.printStackTrace();
         }

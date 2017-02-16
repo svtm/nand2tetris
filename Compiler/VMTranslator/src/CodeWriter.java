@@ -8,14 +8,18 @@ import java.util.Stack;
  */
 public class CodeWriter {
 
-    private static final String TEMP_BASE = "5";
+    private static final int TEMP_BASE = 5;
+    public static final boolean DEBUG = true;
 
     private String fileName;
     private PrintWriter writer;
     private int nextLabel = 0;
+    private Stack<String> funcNameStack;
 
     public CodeWriter(String programName) throws IOException {
         writer = new PrintWriter(programName+".asm");
+        System.out.println(programName+".asm");
+        funcNameStack = new Stack<>();
     }
 
     public void setFileName(String fileName) {
@@ -64,6 +68,10 @@ public class CodeWriter {
         incSP();
     }
 
+    private String getCurrFuncName() {
+        return (funcNameStack.empty()) ? "" : (funcNameStack.peek() + "$");
+    }
+
     private String getLabel() {
         return "SOME_LABEL." + (nextLabel++);
     }
@@ -80,6 +88,7 @@ public class CodeWriter {
     private void writeCmds(String... cmds) {
         for (String cmd : cmds) {
             writer.println(cmd);
+            //if (DEBUG) System.out.println(cmd);
         }
     }
 
@@ -87,7 +96,7 @@ public class CodeWriter {
         writeCmds("@SP", "A=M");
     }
 
-    public void writePushPop(int cmd, String segment, int index) throws IOException {
+    public void writePushPop(int cmd, String segment, int index)  {
         switch (cmd) {
             case VMParser.C_PUSH:
                 if (segment.equals("constant")) {
@@ -101,7 +110,8 @@ public class CodeWriter {
                 } else if (segment.equals("that")) {
                     writePush("THAT", index);
                 } else if (segment.equals("temp")) {
-                    pushTempOrStatic(TEMP_BASE, index);
+                    //pushTempOrStatic(Integer.toString(TEMP_BASE), index);
+                    pushTempOrStatic("R5", index);
                 } else if (segment.equals("static")) {
                     pushTempOrStatic(fileName + "." + index, index);
                 } else if (segment.equals("pointer")) {
@@ -126,7 +136,8 @@ public class CodeWriter {
                 } else if (segment.equals("that")) {
                     reg  = "THAT";
                 } else if (segment.equals("temp")) {
-                    popTempOrStatic(TEMP_BASE, index);
+                   // popTempOrStatic(Integer.toString(TEMP_BASE), index);
+                    popTempOrStatic("R5", index);
                     return;
                 } else if (segment.equals("static")) {
                     popTempOrStatic(fileName + "." + index, index);
@@ -136,11 +147,15 @@ public class CodeWriter {
                     popPointer(seg);
                     return;
                 }
-                writeCmds("@"+index, "D=A", "@"+reg, "D=M+D", "@R13", "M=D");
-                setAtoSP();
-                writeCmds("D=M", "@13", "A=M", "M=D");
+                writePop(reg, index);
                 break;
         }
+    }
+
+    private void writePop(String segment, int index) {
+        writeCmds("@"+index, "D=A", "@"+segment, "D=M+D", "@R13", "M=D");
+        setAtoSP();
+        writeCmds("D=M", "@R13", "A=M", "M=D");
     }
 
     private void pushTempOrStatic(String base, int offset) {
@@ -152,7 +167,7 @@ public class CodeWriter {
     private void popTempOrStatic(String base, int offset) {
         writeCmds("@" + offset, "D=A", "@"+base, "D=A+D", "@R13", "M=D");
         setAtoSP();
-        writeCmds("D=M", "@13", "A=M", "M=D");
+        writeCmds("D=M", "@R13", "A=M", "M=D");
     }
 
     private void pushPointer(String seg) {
@@ -163,7 +178,7 @@ public class CodeWriter {
 
     private void popPointer(String seg) {
         setAtoSP();
-        writeCmds("@"+seg, "M=D");
+        writeCmds("D=M", "@"+seg, "M=D");
     }
     public void printComment(String comment) {
         writer.println("// " + comment);
@@ -175,7 +190,126 @@ public class CodeWriter {
         writeCmds("M=D");
     }
 
+    private void putVal(String reg, int val) {
+        if (val < 0) {
+            writeCmds("@0", "D=A", "@"+(-val), "D=D-A");
+        } else {
+            writeCmds("@"+val, "D=A");
+        }
+        writeCmds("@"+reg, "M=D");
+    }
 
+    public void writeInit() {
+        writeCmds("@256", "D=A", "@SP", "M=D");
+        putVal("LCL", -1);
+        putVal("ARG", -2);
+        putVal("THIS", -3);
+        putVal("THAT", -4);
+        writeCall("Sys.init", 0);
+    }
+
+    public void writeLabel(String label) {
+        String func = getCurrFuncName();
+        if (DEBUG) System.out.println("Printing label " + label + " from func " + func);
+        writeCmds("(" + func + label + ")");
+    }
+
+    private void writeGlobalLabel(String label) {
+        writeCmds("(" + label + ")");
+    }
+
+    private void writeGlobalGoto(String label) {
+        writeCmds("@"+label, "0;JMP");
+    }
+
+    public void writeGoto(String label) {
+        String func = getCurrFuncName();
+        if (DEBUG) System.out.println("Printing goto " + label + " from func " + func);
+        writeCmds("@"+func+label, "0;JMP");
+    }
+
+
+    public void writeIf(String label) {
+        decSP();
+        setAtoSP();
+        writeCmds("D=M", "@" + label, "D;JNE");
+    }
+
+    public void writeCall(String functionName, int numArgs) {
+        // push return-address to stack
+        String func = getCurrFuncName();
+        String retLabel = getLabel();
+        writeCmds("@"+func+retLabel, "D=A");
+        setAtoSP();
+        writeCmds("M=D");
+        incSP();
+
+        // push registers
+        pushRegister("LCL");
+        pushRegister("ARG");
+        pushRegister("THIS");
+        pushRegister("THAT");
+
+        // ARG = SP-n-5
+        writeCmds("@SP", "D=M", "@"+numArgs, "D=D-A", "@5", "D=D-A", "@ARG", "M=D");
+        // LCL = SP
+        writeCmds("@SP", "D=M", "@LCL", "M=D");
+
+        // goto f
+        writeGlobalGoto(functionName);
+        // (return-address)
+        writeLabel(retLabel);
+    }
+
+    private void pushRegister(String register) {
+        writeCmds("@" + register, "D=M");
+        setAtoSP();
+        writeCmds("M=D");
+        incSP();
+    }
+
+    public void writeReturn() {
+        // Temp var FRAME = LCL
+        // (FRAME = R5);
+        //writeCmds("@LCL", "D=M", "@"+TEMP_BASE, "M=D");
+        writeCmds("@LCL", "D=M", "@R13", "M=D");
+        // RET = *(FRAME-5)
+        // (RET = R6);
+        //writeCmds("@5", "D=A", "@"+TEMP_BASE, "A=M", "A=A-D", "D=M", "@"+(TEMP_BASE+1), "M=D");
+        writeCmds("@5", "D=A", "@R13", "A=M", "A=A-D", "D=M", "@R14", "M=D");
+        // *ARG = pop()
+        decSP();
+        setAtoSP();
+        writeCmds("D=M", "@ARG", "A=M", "M=D");
+        //writePop("ARG", 0);
+        // SP = ARG+1
+        writeCmds("@ARG", "D=M+1", "@SP", "M=D");
+        // THAT = *(FRAME-1);
+        resetCallVar("THAT", 1);
+        // THIS = *(FRAME-2);
+        resetCallVar("THIS", 2);
+        // ARG = *(FRAME-3);
+        resetCallVar("ARG", 3);
+        // LCL = *(FRAME-4)
+        resetCallVar("LCL", 4);
+        // goto RET
+     //   writeCmds("@"+(TEMP_BASE+1), "A=M", "0;JMP");
+        writeCmds("@R14", "A=M", "0;JMP");
+        funcNameStack.pop();
+    }
+
+    private void resetCallVar(String segment, int offset) {
+        //writeCmds("@"+offset, "D=A", "@"+TEMP_BASE, "A=M", "A=A-D", "D=M", "@"+segment, "M=D");
+        writeCmds("@"+offset, "D=A", "@R13", "A=M", "A=A-D", "D=M", "@"+segment, "M=D");
+    }
+
+    public void writeFunction(String functionName, int numLocals) {
+        writeGlobalLabel(functionName);
+        funcNameStack.push(functionName);
+        for (int i = 0; i < numLocals; i++) {
+            writePushPop(VMParser.C_PUSH, "constant", 0);
+        }
+    }
 
     public void close() {
         writer.close();
