@@ -1,0 +1,65 @@
+
+class Main {
+  function void main() {
+    var int start, end, curr;
+    do Output.printString("Find all primes in interval [a, b]");
+    do Output.println();
+    let start = Keyboard.readInt("a: ");
+    let end = Keyboard.readInt("b: ");
+
+    let curr = start;
+    while(curr < end) {
+      if (Main.isPrime(curr)) {
+        do Output.printInt(curr);
+        do Output.println();
+      }
+      let curr = curr + 1;
+    }
+    return;
+  }
+
+  function boolean isPrime(int i) {
+    var int max, div, mod;
+    //do Output.printString("isPrime ");
+    //do Output.printInt(i);
+    //do Output.println();
+
+    if (i = 2) {
+      return true;
+    }
+
+    if ((i < 2) | (Main.mod(i, 2) = 0)) {
+      return false;
+    }
+
+    let max = Math.sqrt(i);
+    //do Output.printString("sqrt(");
+    //do Output.printInt(i);
+    //do Output.printString(") = ");
+    //do Output.printInt(max);
+    //do Output.println();
+    let div = 3;
+    while ((div < max) | (div = max)) {
+      let mod = Main.mod(i, div);
+      //do Output.printInt(i);
+      //do Output.printString(" mod ");
+      //do Output.printInt(div);
+      //do Output.printString(" = ");
+      //do Output.printInt(mod);
+      //do Output.println();
+      if (mod = 0) {
+        return false;
+      }
+      let div = div + 2;
+    }
+    return true;
+  }
+
+  // Calculates a mod b
+  function int mod(int a, int b) {
+    while ((a > b) | (a = b)) {
+      let a = a-b;
+    }
+    return a;
+  }
+}
