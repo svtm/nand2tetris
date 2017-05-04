@@ -4,6 +4,7 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/Assembler/Assembler.iml" filepath="$PROJECT_DIR$/Assembler/Assembler.iml" />
       <module fileurl="file://$PROJECT_DIR$/Compiler.iml" filepath="$PROJECT_DIR$/Compiler.iml" />
+      <module fileurl="file://$PROJECT_DIR$/JackCompiler/JackCompiler.iml" filepath="$PROJECT_DIR$/JackCompiler/JackCompiler.iml" />
       <module fileurl="file://$PROJECT_DIR$/VMTranslator/VMTranslator.iml" filepath="$PROJECT_DIR$/VMTranslator/VMTranslator.iml" />
     </modules>
   </component>
